@@ -47,7 +47,7 @@ enum {READ,WRITE};
 
 void use(char *prog){
 
-	fprintf(stdout,"%s w/r VIP PID size\n",prog);
+	fprintf(stdout,"%s w/r VID PID size\n",prog);
 
 	return;
 }
