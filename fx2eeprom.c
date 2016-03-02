@@ -95,6 +95,12 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
+	if (libusb_kernel_driver_active(dev, 0) && libusb_detach_kernel_driver(dev, 0)){
+			fprintf(stderr,"Unable to detach kernel driver\n");
+			perror("libusb_detach_kernel_driver");
+			return -1;
+	}
+
 	ret=libusb_claim_interface(dev,0);
 	if (ret<0){
 		fprintf(stderr,"Unable to clain interface\n");
