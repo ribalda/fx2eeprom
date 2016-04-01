@@ -3,7 +3,7 @@ Read and Write the eeprom of an fx2 chip with the vend_ax.hex firmware
 
 COMPILE
 -------
-- Install libusb-dev on your system.
+- Install libusb-dev or libusb-1.0-0-dev (rPI) on your system.
 - (Optional) Install fxload
 - Run make
 
