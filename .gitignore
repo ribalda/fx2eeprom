@@ -1,1 +1,3 @@
 fx2eeprom
+*.iic
+*~

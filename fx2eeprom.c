@@ -1,25 +1,27 @@
 /*
 
-    Read and Write the eeprom of an fx2 chip with the vend_ax.hex firmware
+    Read and Write the EEPROM of an FX2 chip with the help of the Cypress "vend_ax.hex" firmware.
 
+    - Use the progran cycfx2prog to upload vend_ax.hex to the FX2 RAM:
+    cycfx2prog -id=VID.PID prg:vend_ax.hex run
 
-    1) Mount the usbfs
-    mount -t usbfs usbfs /proc/bus/usb
+    - Read example: read SIZE bytes (max. 4096) from USB device with VID:PID
+      ./fx2eeprom r VID PID SIZE > eeprom.raw
+    - Write example: write SIZE bytes (max. 4096) to USB device with VID:PID
+      ./fx2eeprom w VID PID SIZE < eeprom.raw
 
-    2) Download the fw
-    fxload -I vend_ax.hex  -D /proc/bus/usb/002/011  -v -t fx2
+    SIZE must not be greater than 4096.
+    You can omit the SIZE parameter, in which case 4096 is used by default.
+    In read mode, the tool then outputs 4096 bytes to stdout;
+    in write mode, it saves up to 4096 bytes from stdin (until EOF).
 
-    3) Run fx2eeprom
-    3a)Read example
-    ./fx2eeprom r 0x123 0x234 45 > eeprom.raw
-    3b)Write example
-    cat eeprom.raw | ./fxeeprom w 0x123 0x234 45 > eeprom.raw
 
     Copyright Ricardo Ribalda - 2012 - ricardo.ribalda@gmail.com
+    Copyright Martin Homuth-Rosemann - 2023
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
+    the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
 
     This program is distributed in the hope that it will be useful,
@@ -46,9 +48,7 @@
 enum {READ,WRITE};
 
 void use(char *prog){
-
-	fprintf(stdout,"%s w/r VID PID size\n",prog);
-
+	fprintf(stdout,"%s w/r VID PID [size]\n",prog);
 	return;
 }
 
@@ -56,22 +56,27 @@ int main(int argc, char *argv[]){
 	struct libusb_device_handle *dev;
 	int ret;
 	unsigned char *buffer;
-	int pid, vid,length;
-	int address =0;
+	int pid, vid, length;
+	int address=0;
 	int mode;
 
-	if (argc!=5){
+	if (argc<4){
 		use(argv[0]);
 		return -1;
 	}
 
+	if (argc==5)
+		length=strtoul(argv[4],NULL,0);
+	else
+		length=4096; /* max transfer size */
+
 	if ((argv[1][0]=='W')||(argv[1][0]=='w'))
 		mode=WRITE;
-	else mode=READ;
+        else
+		mode=READ;
 
 	vid=strtoul(argv[2],NULL,0);
 	pid=strtoul(argv[3],NULL,0);
-	length=strtoul(argv[4],NULL,0);
 
 	buffer=malloc(length);
 	if (!buffer){
@@ -79,7 +84,6 @@ int main(int argc, char *argv[]){
 		perror("malloc");
 		return -1;
 	}
-
 
 	ret=libusb_init(NULL);
 	if (ret<0){
@@ -116,16 +120,19 @@ int main(int argc, char *argv[]){
 			return -1;
 		}
 
-		fprintf(stderr,"Readed %d bytes\n",ret);
+		fprintf(stderr,"Read %d bytes\n",ret);
 
 		length=fwrite(buffer,ret,1,stdout);
 	}
 	else {
 		ret=fread(buffer,1,length,stdin);
-		if (length!=ret){
-			fprintf(stderr,"Wrong size from stdin, expected %d readed %d\n",length,ret);
-			perror("fread");
-			return -1;
+		if (ret < length){ /* too few bytes? */
+			if (argc == 5 || ret == 0) { /* we want an exact number of bytes */
+				fprintf(stderr,"Wrong size from stdin - expected %d, got %d\n",length,ret);
+				perror("fread");
+				return -1;
+			}
+			length = ret; /* else use only the available number of bytes */
 		}
 
 		ret = libusb_control_transfer(dev,TRANS_TYPE_WRITE,EEPROM,address,LOCATION,buffer,length,TIMEOUT);
@@ -134,7 +141,7 @@ int main(int argc, char *argv[]){
 			perror("libusb_control_transfer");
 			return -1;
 		}
-		fprintf(stderr,"Written %d bytes\n",ret);
+		fprintf(stderr,"Wrote %d bytes\n",ret);
 	}
 
 	libusb_close(dev);
