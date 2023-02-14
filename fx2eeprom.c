@@ -56,8 +56,8 @@ int main(int argc, char *argv[]){
 	struct libusb_device_handle *dev;
 	int ret;
 	unsigned char *buffer;
-	int pid, vid,length;
-	int address =0;
+	int pid, vid, length;
+	int address=0;
 	int mode;
 
 	if (argc!=5){
@@ -67,7 +67,8 @@ int main(int argc, char *argv[]){
 
 	if ((argv[1][0]=='W')||(argv[1][0]=='w'))
 		mode=WRITE;
-	else mode=READ;
+	else
+		mode=READ;
 
 	vid=strtoul(argv[2],NULL,0);
 	pid=strtoul(argv[3],NULL,0);
@@ -116,14 +117,14 @@ int main(int argc, char *argv[]){
 			return -1;
 		}
 
-		fprintf(stderr,"Readed %d bytes\n",ret);
+		fprintf(stderr,"Read %d bytes\n",ret);
 
 		length=fwrite(buffer,ret,1,stdout);
 	}
 	else {
 		ret=fread(buffer,1,length,stdin);
 		if (length!=ret){
-			fprintf(stderr,"Wrong size from stdin, expected %d readed %d\n",length,ret);
+			fprintf(stderr,"Wrong size from stdin, expected %d read %d\n",length,ret);
 			perror("fread");
 			return -1;
 		}
@@ -134,7 +135,7 @@ int main(int argc, char *argv[]){
 			perror("libusb_control_transfer");
 			return -1;
 		}
-		fprintf(stderr,"Written %d bytes\n",ret);
+		fprintf(stderr,"Wrote %d bytes\n",ret);
 	}
 
 	libusb_close(dev);
