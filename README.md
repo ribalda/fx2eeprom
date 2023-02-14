@@ -36,3 +36,8 @@ cycfx2prog -id=0x04b4.0x8613 prg:vend_ax.hex run
 In read mode, the tool then outputs 4096 EEPROM bytes to stdout;
 in write mode, it stores up to 4096 bytes from stdin (until EOF) on the EEPROM.
 
+CyUSB Suite for Linux
+---------------------
+
+If you want to work more intensively with the FX2 on your Linux system, the Cypress GUI
+[CyUSB Suite for Linux](https://github.com/Ho-Ro/cyusb_linux) offers further possibilities.
