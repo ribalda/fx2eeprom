@@ -22,19 +22,21 @@ USE
 cycfx2prog -id=0x04b4.0x8613 prg:vend_ax.hex run
 ```
 
-- Read SIZE bytes (max. 4096) from USB device with VID:PID
+- Read SIZE bytes starting at EEPROM_ADDRESS from USB device with VID:PID
 ```sh
-./fx2eeprom r VID PID SIZE > eeprom.raw
+./fx2eeprom r VID PID [SIZE [EEPROM_ADDRESS]] > eeprom.raw
 ```
 
-- Write SIZE bytes (max. 4096) to USB device with VID:PID
+- Write SIZE bytes starting at EEPROM_ADDRESS to USB device with VID:PID
 ```sh
-./fx2eeprom w VID PID SIZE < eeprom.raw
+./fx2eeprom w VID PID [SIZE [EEPROM_ADDRESS]] < eeprom.raw
 ```
 
-`SIZE` must not be greater than 4096. You can omit the `SIZE` parameter, in which case 4096 is used by default.
-In read mode, the tool then outputs 4096 EEPROM bytes to stdout;
-in write mode, it stores up to 4096 bytes from stdin (until EOF) on the EEPROM.
+`SIZE` must not be greater than 65536. You can omit the `SIZE` parameter, in which case 65536 is used by default.
+In read mode, the tool then outputs 65536 EEPROM bytes to stdout;
+in write mode, it stores up to 65536 bytes from stdin (until EOF) on the EEPROM.
+Also the `EEPROM_ADDRESS` parameter is optional and defaults to 0.
+
 
 CyUSB Suite for Linux
 ---------------------

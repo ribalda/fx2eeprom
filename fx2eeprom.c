@@ -44,20 +44,22 @@
 #define EEPROM 0xa2
 #define TIMEOUT 1000
 #define LOCATION (1<<4)
+#define CHUNKSIZE 64
 
 enum {READ,WRITE};
 
 void use(char *prog){
-	fprintf(stdout,"%s w/r VID PID [size]\n",prog);
+	fprintf(stdout,"%s w/r VID PID [ size [ee_addr] ]\n",prog);
 	return;
 }
 
 int main(int argc, char *argv[]){
 	struct libusb_device_handle *dev;
 	int ret;
-	unsigned char *buffer;
-	int pid, vid, length;
+	unsigned char buffer[CHUNKSIZE];
+	int pid, vid, length, xfer_len;
 	int address=0;
+	int r_count=0, w_count=0;
 	int mode;
 
 	if (argc<4){
@@ -65,10 +67,14 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
-	if (argc==5)
+	if (argc>4) /* explicite size */
 		length=strtoul(argv[4],NULL,0);
 	else
-		length=4096; /* max transfer size */
+		length=0x10000; /* max transfer size */
+	if (argc>5) /* EEPROM address */
+		address=strtoul(argv[5],NULL,0);
+	else
+		address=0; /* start from bottom */
 
 	if ((argv[1][0]=='W')||(argv[1][0]=='w'))
 		mode=WRITE;
@@ -78,12 +84,6 @@ int main(int argc, char *argv[]){
 	vid=strtoul(argv[2],NULL,0);
 	pid=strtoul(argv[3],NULL,0);
 
-	buffer=malloc(length);
-	if (!buffer){
-		fprintf(stderr,"Unable to alloc memory\n");
-		perror("malloc");
-		return -1;
-	}
 
 	ret=libusb_init(NULL);
 	if (ret<0){
@@ -112,37 +112,53 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
-	if (mode==READ){
-		ret = libusb_control_transfer(dev,TRANS_TYPE_READ,EEPROM,address,LOCATION,buffer,length,TIMEOUT);
-		if (ret<0){
-			fprintf(stderr,"Unable to control transfer\n");
-			perror("libusb_control_transfer");
-			return -1;
+	while ( length ) { /* read/write chunks of max CHUNKSIZE byte */
+		if ( length > CHUNKSIZE ) {
+			xfer_len = CHUNKSIZE;
+			length -= CHUNKSIZE;
+		} else {
+			xfer_len = length;
+			length = 0;
 		}
 
-		fprintf(stderr,"Read %d bytes\n",ret);
-
-		length=fwrite(buffer,ret,1,stdout);
-	}
-	else {
-		ret=fread(buffer,1,length,stdin);
-		if (ret < length){ /* too few bytes? */
-			if (argc == 5 || ret == 0) { /* we want an exact number of bytes */
-				fprintf(stderr,"Wrong size from stdin - expected %d, got %d\n",length,ret);
-				perror("fread");
+		if (mode==READ){
+			ret=libusb_control_transfer(dev,TRANS_TYPE_READ,EEPROM,address,LOCATION,buffer,xfer_len,TIMEOUT);
+			if ( ret < 0 ) {
+				fprintf(stderr,"Unable to control transfer\n");
+				perror("libusb_control_transfer");
 				return -1;
 			}
-			length = ret; /* else use only the available number of bytes */
-		}
+			address += CHUNKSIZE;
+			r_count += ret;
+			w_count += fwrite(buffer,1,ret,stdout);
+		} else { /* WRITE */
+			ret = fread(buffer,1,xfer_len,stdin);
+			if (ret < xfer_len){ /* too few bytes? */
+				if (argc > 4) { /* we want an exact number of bytes */
+					fprintf(stderr,"Wrong size from stdin - expected %d, got %d\n",xfer_len,r_count);
+					perror("fread");
+					return -1;
+				} else {
+					if (ret == 0) /* EOF */
+						break; /* ready */
+					xfer_len = ret; /* use only the available number of bytes */
+				}
+			}
+			r_count += ret;
 
-		ret = libusb_control_transfer(dev,TRANS_TYPE_WRITE,EEPROM,address,LOCATION,buffer,length,TIMEOUT);
-		if (ret<0){
-			fprintf(stderr,"Unable to control transfer\n");
-			perror("libusb_control_transfer");
-			return -1;
+			ret = libusb_control_transfer(dev,TRANS_TYPE_WRITE,EEPROM,address,LOCATION,buffer,xfer_len,TIMEOUT);
+			if (ret<0){
+				fprintf(stderr,"Unable to control transfer\n");
+				perror("libusb_control_transfer");
+				return -1;
+			}
+			address += CHUNKSIZE;
+			w_count += ret;
 		}
-		fprintf(stderr,"Wrote %d bytes\n",ret);
 	}
+
+	fprintf(stderr,"Read %d bytes\n",r_count);
+	fprintf(stderr,"Wrote %d bytes\n",w_count);
 
 	libusb_close(dev);
 	libusb_exit(NULL);
