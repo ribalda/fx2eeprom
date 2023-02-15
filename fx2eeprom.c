@@ -5,16 +5,21 @@
     - Use the progran cycfx2prog to upload vend_ax.hex to the FX2 RAM:
     cycfx2prog -id=VID.PID prg:vend_ax.hex run
 
-    - Read example: read SIZE bytes (max. 4096) from USB device with VID:PID
+    - Read example: read SIZE bytes from USB device with VID:PID
       ./fx2eeprom r VID PID SIZE > eeprom.raw
-    - Write example: write SIZE bytes (max. 4096) to USB device with VID:PID
+    - Write example: write SIZE bytes to USB device with VID:PID
       ./fx2eeprom w VID PID SIZE < eeprom.raw
 
-    SIZE must not be greater than 4096.
-    You can omit the SIZE parameter, in which case 4096 is used by default.
-    In read mode, the tool then outputs 4096 bytes to stdout;
-    in write mode, it saves up to 4096 bytes from stdin (until EOF).
+    SIZE must not be greater than 65536.
+    You can omit the SIZE parameter, in which case it defaults to 65536.
+    In read mode, the tool then outputs SIZE bytes to stdout;
+    in write mode, it stores up to SIZE bytes from stdin (until EOF).
 
+    An additional ADDRESS parameter can be appended (default = 0)
+    to start the read / write at this EEPROM address.
+
+    - Read example: read 256 bytes from VID:PID starting at EEPROM addr 1024
+      ./fx2eeprom r VID PID 256 1024 > eeprom_256_at_1024.raw
 
     Copyright Ricardo Ribalda - 2012 - ricardo.ribalda@gmail.com
     Copyright Martin Homuth-Rosemann - 2023
