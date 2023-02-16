@@ -10,17 +10,8 @@ COMPILE
 - Install libusb-1.0-0-dev on your system, e.g. `apt install libusb-1.0-0-dev` for debian.
 - Run `make`
 
-PREPARATION
------------
-- Install cycfx2prog, e.g. `apt install cycfx2prog`
-
 USE
 ---
-
-- Download the fw
-```sh
-cycfx2prog -id=0x04b4.0x8613 prg:vend_ax.hex run
-```
 
 - Read SIZE bytes starting at EEPROM_ADDRESS from USB device with VID:PID
 ```sh
