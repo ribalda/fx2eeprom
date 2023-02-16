@@ -1,9 +1,6 @@
 /*
 
-    Read and Write the EEPROM of an FX2 chip with the help of the Cypress "vend_ax.hex" firmware.
-
-    - Use the progran cycfx2prog to upload vend_ax.hex to the FX2 RAM:
-    cycfx2prog -id=VID.PID prg:vend_ax.hex run
+    Read and Write the EEPROM of an FX2 chip with the help of the Cypress vend_ax firmware.
 
     - Read example: read SIZE bytes from USB device with VID:PID
       ./fx2eeprom r VID PID SIZE > eeprom.raw
@@ -43,6 +40,7 @@
 #include <libusb-1.0/libusb.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "vend_ax.h"
 
 #define TRANS_TYPE_READ 0xc0
 #define TRANS_TYPE_WRITE 0x40
@@ -53,10 +51,12 @@
 
 enum {READ,WRITE};
 
-void use(char *prog){
-	fprintf(stdout,"%s w/r VID PID [ size [ee_addr] ]\n",prog);
+
+static void use(char *prog){
+	fprintf(stderr,"%s w/r VID PID [ size [ee_addr] ]\n",prog);
 	return;
 }
+
 
 int main(int argc, char *argv[]){
 	struct libusb_device_handle *dev;
@@ -117,6 +117,13 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
+	/* Load the vend_ax firmware that supports the EEPROM read/write commands. */
+	ret = fx2_load_vendax(dev);
+	if ( ret != 0 ) {
+		fprintf(stderr, "Error: Failed to load vend_vx firmware\n");
+		return -4;
+	}
+
 	while ( length ) { /* read/write chunks of max CHUNKSIZE byte */
 		if ( length > CHUNKSIZE ) {
 			xfer_len = CHUNKSIZE;
@@ -127,7 +134,8 @@ int main(int argc, char *argv[]){
 		}
 
 		if (mode==READ){
-			ret=libusb_control_transfer(dev,TRANS_TYPE_READ,EEPROM,address,LOCATION,buffer,xfer_len,TIMEOUT);
+			ret=libusb_control_transfer(dev,TRANS_TYPE_READ,EEPROM,address,
+						    LOCATION,buffer,xfer_len,TIMEOUT);
 			if ( ret < 0 ) {
 				fprintf(stderr,"Unable to control transfer\n");
 				perror("libusb_control_transfer");
@@ -151,7 +159,8 @@ int main(int argc, char *argv[]){
 			}
 			r_count += ret;
 
-			ret = libusb_control_transfer(dev,TRANS_TYPE_WRITE,EEPROM,address,LOCATION,buffer,xfer_len,TIMEOUT);
+			ret = libusb_control_transfer(dev,TRANS_TYPE_WRITE,EEPROM,address,
+						      LOCATION,buffer,xfer_len,TIMEOUT);
 			if (ret<0){
 				fprintf(stderr,"Unable to control transfer\n");
 				perror("libusb_control_transfer");
@@ -162,8 +171,13 @@ int main(int argc, char *argv[]){
 		}
 	}
 
-	fprintf(stderr,"Read %d bytes\n",r_count);
-	fprintf(stderr,"Wrote %d bytes\n",w_count);
+	if (mode == READ) {
+		fprintf(stderr,"Read %d bytes from EEPROM\n",r_count);
+		fprintf(stderr,"Wrote %d bytes to stdout\n",w_count);
+	} else {
+		fprintf(stderr,"Read %d bytes from stdin\n",r_count);
+		fprintf(stderr,"Wrote %d bytes to EEPROM\n",w_count);
+	}
 
 	libusb_close(dev);
 	libusb_exit(NULL);

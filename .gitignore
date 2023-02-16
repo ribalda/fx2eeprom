@@ -1,1 +1,15 @@
+# executable
 fx2eeprom
+
+# data files
+*.bin
+*.iic
+
+# editor artifacts
+*~
+
+# hidden temp files
+.*
+
+# but not this one
+!.gitignore
